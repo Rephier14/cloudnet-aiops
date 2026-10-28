@@ -11,7 +11,7 @@ st.caption("Cloud-Native Architecture Ready (Amazon Bedrock / Groq API)")
 # 2. Sidebar untuk Input API Key & Simulasi FinOps AWS
 with st.sidebar:
     st.header("⚙️ Konfigurasi AI")
-    api_key = st.text_input("Masukkan Groq API Key (Gratis):", type="password")
+    api_key = st.text_input("Masukkan Groq API Key:", type="password")
     st.markdown("[Dapatkan API Key Gratis di sini](https://console.groq.com/keys)")
     
     st.divider()
@@ -48,35 +48,40 @@ with col2:
     st.subheader("🧠 Hasil Diagnosis AI & Rekomendasi CLI")
     if analyze_btn:
         if not api_key:
-            st.warning("⚠️ Masukkan Groq API Key dulu di menu sebelah kiri!")
+            st.error("⚠️ **API Key Kosong!** Masukkan Groq API Key kamu di kolom menu sebelah kiri terlebih dahulu.")
         else:
-            with st.spinner("Mengumpulkan korelasi log & topologi..."):
-                client = Groq(api_key=api_key)
-                prompt = f"""
-                Kamu adalah Senior Network & Optical Engineer.
-                Topologi: {TOPOLOGY}
-                Log Insiden:
-                {processed_logs}
-                
-                Tugas:
-                1. Tentukan 1 Root Cause utama (apakah masalah optik/fisik atau routing?).
-                2. Jelaskan kenapa alert lainnya hanya dampak turunan (symptomatic).
-                3. Berikan langkah troubleshooting (misal: cek OTDR atau command CLI).
-                """
-                
-                response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.2
-                )
-                
-                ai_output = response.choices[0].message.content
-                tokens_used = response.usage.total_tokens
-                
-                st.success("Analisis Selesai!")
-                st.markdown(ai_output)
-                
-                # Simulasi Perhitungan Biaya AWS Bedrock (FinOps)
-                bedrock_cost = (tokens_used / 1000) * 0.000035
-                st.divider()
-                st.caption(f"📊 **FinOps Metric:** Total Token: `{tokens_used}` | Estimasi Biaya jika di **AWS Bedrock (Nova Micro)**: `${bedrock_cost:.6f}` (~Rp {bedrock_cost*16000:.2f})")
+            try:
+                with st.spinner("Menghubungkan ke Groq API & menganalisis log..."):
+                    # Inisialisasi client Groq dengan API Key dari input user
+                    client = Groq(api_key=api_key.strip())
+                    
+                    prompt = f"""
+                    Kamu adalah Senior Network & Optical Engineer.
+                    Topologi: {TOPOLOGY}
+                    Log Insiden:
+                    {processed_logs}
+                    
+                    Tugas:
+                    1. Tentukan 1 Root Cause utama (apakah masalah optik/fisik atau routing?).
+                    2. Jelaskan kenapa alert lainnya hanya dampak turunan (symptomatic).
+                    3. Berikan langkah troubleshooting (misal: cek OTDR atau command CLI).
+                    """
+                    
+                    response = client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.2
+                    )
+                    
+                    ai_output = response.choices[0].message.content
+                    tokens_used = response.usage.total_tokens
+                    
+                    st.success("Analisis Selesai!")
+                    st.markdown(ai_output)
+                    
+                    # Simulasi Perhitungan Biaya AWS Bedrock (FinOps)
+                    bedrock_cost = (tokens_used / 1000) * 0.000035
+                    st.divider()
+                    st.caption(f"📊 **FinOps Metric:** Total Token: `{tokens_used}` | Estimasi Biaya jika di **AWS Bedrock (Nova Micro)**: `${bedrock_cost:.6f}` (~Rp {bedrock_cost*16000:.2f})")
+            except Exception as e:
+                st.error(f"❌ Terjadi kesalahan saat memanggil Groq API. Pastikan API Key benar dan aktif.\n\nDetail Error: `{e}`")
